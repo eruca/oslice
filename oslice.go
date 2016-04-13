@@ -26,6 +26,11 @@ func New() *OSlice {
 	}
 }
 
+// 如果是结构体内部的一个项，而且不是指针，需要用到Init()
+func (o *OSlice) Init() {
+	o.buf = new(bytes.Buffer)
+}
+
 func (o *OSlice) Len() int {
 	if len(o.regionList) != len(o.idList) {
 		panic("regionList is not sync with idList")
@@ -47,14 +52,14 @@ func (o *OSlice) Swap(i, j int) {
 	o.idList[i], o.idList[j] = o.idList[j], o.idList[i]
 }
 
-func (o *OSlice) sort() {
+func (o *OSlice) Sort() {
 	if !o.isSorted {
 		sort.Sort(o)
 		o.isSorted = true
 	}
 }
 
-func (o *OSlice) shrink() {
+func (o *OSlice) Shrink() {
 	src := o.buf.Bytes()
 	dst := make([]byte, len(src))
 
@@ -89,6 +94,10 @@ func (o *OSlice) Search(text []byte) bool {
 }
 
 func (o *OSlice) FoundOrInsert(text []byte) (id RegionID) {
+	if !o.isSorted {
+		o.Sort()
+	}
+
 	i, ok := o.search(text)
 	if ok {
 		return o.idList[i]
@@ -123,8 +132,8 @@ func (o *OSlice) search(text []byte) (i int, found bool) {
 	return i, false
 }
 
-func (o *OSlice) Query(regionID int) []byte {
-	rg := o.regionList[regionID]
+func (o *OSlice) Query(regionID RegionID) []byte {
+	rg := o.regionList[int(regionID)]
 
 	return o.buf.Bytes()[int(rg.begin):int(rg.end)]
 }
