@@ -2,6 +2,7 @@ package oslice
 
 import (
 	"bytes"
+	// "fmt"
 	"log"
 	"sort"
 )
@@ -60,11 +61,9 @@ func (o *OSlice) Sort() {
 }
 
 func (o *OSlice) Shrink() {
-	src := o.buf.Bytes()
-	dst := make([]byte, len(src))
-
-	copy(dst, src)
-	o.buf = bytes.NewBuffer(dst)
+	length := o.buf.Len()
+	src := o.buf.Bytes()[:length:length]
+	o.buf = bytes.NewBuffer(src)
 }
 
 func (o *OSlice) Append(words []byte) (id RegionID) {
@@ -111,25 +110,48 @@ func (o *OSlice) FoundOrInsert(text []byte) (id RegionID) {
 }
 
 func (o *OSlice) search(text []byte) (i int, found bool) {
-	var rg *region
-	var toSearch []byte
-	var id int
-
 	data := o.buf.Bytes()
-	i = sort.Search(len(o.regionList), func(i int) bool {
-		id = int(o.idList[i])
-		rg = &o.regionList[id]
+	start := 0
+	last := len(o.idList) - 1
 
-		toSearch = data[int(rg.begin):int(rg.end)]
+	begin := int(o.regionList[o.idList[0]].begin)
+	end := int(o.regionList[o.idList[0]].end)
 
-		return bytes.Compare(toSearch, text) >= 0
-	})
-
-	if i < len(o.regionList) && bytes.Equal(toSearch, text) {
-		return i, true
+	cmp := bytes.Compare(text, data[begin:end])
+	if cmp == 0 {
+		return 0, true
+	} else if cmp < 0 {
+		return 0, false
 	}
 
-	return i, false
+	begin = int(o.regionList[o.idList[last]].begin)
+	end = int(o.regionList[o.idList[last]].end)
+
+	cmp = bytes.Compare(text, data[begin:end])
+	if cmp == 0 {
+		return len(o.idList) - 1, true
+	} else if cmp > 0 {
+		return len(o.idList), false
+	}
+
+	mid := 0
+
+	for last-start > 1 {
+		mid = (last + start) / 2
+		begin = int(o.regionList[o.idList[mid]].begin)
+		end = int(o.regionList[o.idList[mid]].end)
+
+		cmp = bytes.Compare(text, data[begin:end])
+		if cmp == 0 {
+			return mid, true
+		} else if cmp < 0 {
+			last = mid
+		} else {
+			start = mid
+		}
+	}
+
+	return end, false
 }
 
 func (o *OSlice) Query(regionID RegionID) []byte {
