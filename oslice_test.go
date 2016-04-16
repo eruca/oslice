@@ -11,13 +11,35 @@ import (
 
 var o = New()
 var isRead = false
-var dictFile = "/Users/nick/Lang/Go/cedar-go/testdata/dict.txt"
+var dictFile = "/Users/apple/.go/src/github.com/eruca/cedar-go/testdata/dict.txt"
 
 func expect(t *testing.T, a, b interface{}) {
 	if !reflect.DeepEqual(a, b) {
 		t.Errorf("expect %v type:%v, but get %v type:%v",
 			b, reflect.TypeOf(b), a, reflect.TypeOf(a))
 	}
+}
+
+func Test_OSlice(t *testing.T) {
+	o := New()
+
+	o.Append([]byte("a"))
+	o.Append([]byte("b"))
+	o.Append([]byte("e"))
+	o.Append([]byte("c"))
+	o.Append([]byte("k"))
+
+	o.Sort()
+	o.Shrink()
+
+	expect(t, o.buf.Len(), 5)
+	expect(t, o.regionList, []int{0, 1, 2, 3, 4})
+	expect(t, o.idList, []RegionID{0, 1, 3, 2, 4})
+	expect(t, cap(o.buf.Bytes()), 5)
+	expect(t, o.Search([]byte("e")), true)
+	expect(t, o.Search([]byte("d")), false)
+	expect(t, o.Query(o.idList[0]), []byte("a"))
+	expect(t, o.Query(o.idList[2]), []byte("c"))
 }
 
 func read() {

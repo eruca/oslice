@@ -6,14 +6,9 @@ import (
 	"sort"
 )
 
-type region struct {
-	begin uint32
-	end   uint32
-}
-
 type OSlice struct {
 	buf        *bytes.Buffer
-	regionList []region
+	regionList []int
 	idList     []RegionID
 	isSorted   bool
 }
@@ -39,13 +34,7 @@ func (o *OSlice) Len() int {
 }
 
 func (o *OSlice) Less(i, j int) bool {
-	data := o.buf.Bytes()
-
-	rgI := o.regionList[i]
-	rgJ := o.regionList[j]
-
-	return bytes.Compare(data[int(rgI.begin):int(rgI.end)],
-		data[int(rgJ.begin):int(rgJ.end)]) < 0
+	return bytes.Compare(o.Query(o.idList[i]), o.Query(o.idList[j])) < 0
 }
 
 func (o *OSlice) Swap(i, j int) {
@@ -68,25 +57,24 @@ func (o *OSlice) Shrink() {
 func (o *OSlice) Append(words []byte) (id RegionID) {
 	begin := o.buf.Len()
 
-	n, err := o.buf.Write(words)
+	_, err := o.buf.Write(words)
 	if err != nil {
 		log.Panicln("bytes.Buffer write []byte failed: ", err)
 	}
 
-	rg := region{
-		begin: uint32(begin),
-		end:   uint32(begin + n),
-	}
-
 	id = RegionID(len(o.regionList))
 
-	o.regionList = append(o.regionList, rg)
+	o.regionList = append(o.regionList, begin)
 	o.idList = append(o.idList, id)
 
 	return id
 }
 
 func (o *OSlice) Search(text []byte) bool {
+	if !o.isSorted {
+		o.Sort()
+	}
+
 	_, ok := o.search(text)
 	return ok
 }
@@ -109,13 +97,14 @@ func (o *OSlice) FoundOrInsert(text []byte) (id RegionID) {
 }
 
 // 返回查找位置及是否找到
-// 如果found是true, 则表示查找到位置 i
+// 如果found是true, 则表示idList查找到位置 i
 // 如果found是false,则表示为插入位置 i
 func (o *OSlice) search(text []byte) (i int, found bool) {
 	data := o.buf.Bytes()
 	first, last := 0, len(o.idList)-1
 
-	begin, end := int(o.regionList[o.idList[0]].begin), int(o.regionList[o.idList[0]].end)
+	begin, end := o.byteRange(o.idList[0])
+
 	cmp := bytes.Compare(text, data[begin:end])
 	if cmp == 0 {
 		return 0, true
@@ -123,7 +112,8 @@ func (o *OSlice) search(text []byte) (i int, found bool) {
 		return 0, false
 	}
 
-	begin, end = int(o.regionList[o.idList[last]].begin), int(o.regionList[o.idList[last]].end)
+	begin, end = o.byteRange(o.idList[last])
+
 	cmp = bytes.Compare(text, data[begin:end])
 	if cmp == 0 {
 		return len(o.idList) - 1, true
@@ -134,8 +124,7 @@ func (o *OSlice) search(text []byte) (i int, found bool) {
 	mid := 0
 	for last-first > 1 {
 		mid = (last + first) / 2
-		begin = int(o.regionList[o.idList[mid]].begin)
-		end = int(o.regionList[o.idList[mid]].end)
+		begin, end = o.byteRange(o.idList[mid])
 
 		cmp = bytes.Compare(text, data[begin:end])
 		if cmp == 0 {
@@ -150,8 +139,18 @@ func (o *OSlice) search(text []byte) (i int, found bool) {
 	return last, false
 }
 
-func (o *OSlice) Query(regionID RegionID) []byte {
-	rg := o.regionList[int(regionID)]
+func (o *OSlice) byteRange(id RegionID) (begin int, end int) {
+	begin = o.regionList[int(id)]
 
-	return o.buf.Bytes()[int(rg.begin):int(rg.end)]
+	if int(id) == len(o.regionList)-1 {
+		end = o.buf.Len()
+	} else {
+		end = o.regionList[int(id)+1]
+	}
+	return
+}
+
+func (o *OSlice) Query(id RegionID) []byte {
+	begin, end := o.byteRange(id)
+	return o.buf.Bytes()[begin:end]
 }
