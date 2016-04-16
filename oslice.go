@@ -2,7 +2,6 @@ package oslice
 
 import (
 	"bytes"
-	// "fmt"
 	"log"
 	"sort"
 )
@@ -109,14 +108,14 @@ func (o *OSlice) FoundOrInsert(text []byte) (id RegionID) {
 	return id
 }
 
+// 返回查找位置及是否找到
+// 如果found是true, 则表示查找到位置 i
+// 如果found是false,则表示为插入位置 i
 func (o *OSlice) search(text []byte) (i int, found bool) {
 	data := o.buf.Bytes()
-	start := 0
-	last := len(o.idList) - 1
+	first, last := 0, len(o.idList)-1
 
-	begin := int(o.regionList[o.idList[0]].begin)
-	end := int(o.regionList[o.idList[0]].end)
-
+	begin, end := int(o.regionList[o.idList[0]].begin), int(o.regionList[o.idList[0]].end)
 	cmp := bytes.Compare(text, data[begin:end])
 	if cmp == 0 {
 		return 0, true
@@ -124,9 +123,7 @@ func (o *OSlice) search(text []byte) (i int, found bool) {
 		return 0, false
 	}
 
-	begin = int(o.regionList[o.idList[last]].begin)
-	end = int(o.regionList[o.idList[last]].end)
-
+	begin, end = int(o.regionList[o.idList[last]].begin), int(o.regionList[o.idList[last]].end)
 	cmp = bytes.Compare(text, data[begin:end])
 	if cmp == 0 {
 		return len(o.idList) - 1, true
@@ -135,9 +132,8 @@ func (o *OSlice) search(text []byte) (i int, found bool) {
 	}
 
 	mid := 0
-
-	for last-start > 1 {
-		mid = (last + start) / 2
+	for last-first > 1 {
+		mid = (last + first) / 2
 		begin = int(o.regionList[o.idList[mid]].begin)
 		end = int(o.regionList[o.idList[mid]].end)
 
@@ -147,11 +143,11 @@ func (o *OSlice) search(text []byte) (i int, found bool) {
 		} else if cmp < 0 {
 			last = mid
 		} else {
-			start = mid
+			first = mid
 		}
 	}
 
-	return end, false
+	return last, false
 }
 
 func (o *OSlice) Query(regionID RegionID) []byte {
