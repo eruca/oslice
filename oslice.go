@@ -23,7 +23,9 @@ func New() *OSlice {
 
 // 如果是结构体内部的一个项，而且不是指针，需要用到Init()
 func (o *OSlice) Init() {
-	o.buf = new(bytes.Buffer)
+	if o.buf == nil {
+		o.buf = new(bytes.Buffer)
+	}
 }
 
 func (o *OSlice) Len() int {
@@ -48,10 +50,23 @@ func (o *OSlice) Sort() {
 	}
 }
 
-func (o *OSlice) Shrink() {
+// reserve <= 0 表示不预留空间
+// 如果要求预留空间比实际cap-len大，也就直接返回实际可预留空间cap-len
+func (o *OSlice) Shrink(reserve int) (reserved int) {
 	length := o.buf.Len()
-	src := o.buf.Bytes()[:length:length]
-	o.buf = bytes.NewBuffer(src)
+	capacity := o.buf.Cap()
+
+	if reserve < 0 {
+		reserve = 0
+	}
+
+	if capacity-length > reserve {
+		src := o.buf.Bytes()[:length : length+reserve]
+		o.buf = bytes.NewBuffer(src)
+		return reserve
+	}
+
+	return capacity - length
 }
 
 func (o *OSlice) Append(words []byte) (id RegionID) {

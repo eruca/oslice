@@ -30,11 +30,11 @@ func Test_OSlice(t *testing.T) {
 	o.Append([]byte("k"))
 
 	o.Sort()
-	o.Shrink()
+	o.Shrink(0)
 
 	expect(t, o.buf.Len(), 5)
 	expect(t, o.regionList, []int{0, 1, 2, 3, 4})
-	expect(t, o.idList, []RegionID{0, 1, 3, 2, 4})
+	expect(t, o.idList, []RegionId{0, 1, 3, 2, 4})
 	expect(t, cap(o.buf.Bytes()), 5)
 	expect(t, o.Search([]byte("e")), true)
 	expect(t, o.Search([]byte("d")), false)
@@ -60,7 +60,7 @@ func read() {
 	// fmt.Printf("插入 %d 数据, buf: %d\n", index, cap(o.buf.Bytes()))
 
 	o.Sort()
-	o.Shrink()
+	o.Shrink(0)
 
 	// fmt.Printf("shrink 后 buf: %d\n", cap(o.buf.Bytes()))
 }
