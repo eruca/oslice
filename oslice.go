@@ -94,14 +94,16 @@ func (o *OSlice) Search(text []byte) bool {
 	return ok
 }
 
-func (o *OSlice) FoundOrInsert(text []byte) (id RegionID) {
+func (o *OSlice) FoundOrInsertAfterSort(text []byte) (id RegionID) {
 	if !o.isSorted {
 		o.Sort()
 	}
 
-	i, ok := o.search(text)
-	if ok {
-		return o.idList[i]
+	i, ok := 0, false
+	if len(o.idList) > 0 {
+		if i, ok = o.search(text); ok {
+			return o.idList[i]
+		}
 	}
 
 	id = o.Append(text)
@@ -115,6 +117,10 @@ func (o *OSlice) FoundOrInsert(text []byte) (id RegionID) {
 // 如果found是true, 则表示idList查找到位置 i
 // 如果found是false,则表示为插入位置 i
 func (o *OSlice) search(text []byte) (i int, found bool) {
+	if len(o.idList) == 0 {
+		return 0, false
+	}
+
 	data := o.buf.Bytes()
 	first, last := 0, len(o.idList)-1
 
