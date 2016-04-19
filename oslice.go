@@ -61,8 +61,11 @@ func (o *OSlice) Shrink(reserve int) (reserved int) {
 	}
 
 	if capacity-length > reserve {
-		src := o.buf.Bytes()[:length : length+reserve]
-		o.buf = bytes.NewBuffer(src)
+		src := o.buf.Bytes()
+		dst := make([]byte, len(src), len(src)+reserve)
+		copy(dst, src)
+
+		o.buf = bytes.NewBuffer(dst)
 		return reserve
 	}
 
