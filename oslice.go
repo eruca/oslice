@@ -56,12 +56,14 @@ func (o *OSlice) foundOrInsert(text []byte) (id RegionID) {
 	o.RLock()
 	pos, found := o.search(text)
 	if found {
+		o.RUnlock()
 		return o.idList[pos]
 	}
 	o.RUnlock()
 
 	o.Lock()
 	if pos, found = o.search(text); found {
+		o.Unlock()
 		return o.idList[pos]
 	}
 
